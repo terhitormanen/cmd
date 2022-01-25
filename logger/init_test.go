@@ -5,12 +5,13 @@
 package logger_test
 
 import (
-	"github.com/revel/config"
-	"github.com/revel/revel/logger"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/terhitormanen/config"
+	"github.com/terhitormanen/revel/logger"
 )
 
 type (
