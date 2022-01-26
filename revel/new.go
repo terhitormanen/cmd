@@ -13,9 +13,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
 	"net/url"
+
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 var cmdNew = &Command{
@@ -114,7 +115,7 @@ func newApp(c *model.CommandConfig) (err error) {
 	if c.New.Run {
 		// Need to prep the run command
 		c.Run.ImportPath = c.ImportPath
-		updateRunConfig(c,nil)
+		updateRunConfig(c, nil)
 		c.UpdateImportPath()
 		runApp(c)
 	} else {
@@ -149,7 +150,7 @@ func createDepVendor(c *model.CommandConfig) (err error) {
 	if !utils.DirExists(vendorPath) {
 
 		if err := os.MkdirAll(vendorPath, os.ModePerm); err != nil {
-			return utils.NewBuildError("Failed to create " + vendorPath, "error", err)
+			return utils.NewBuildError("Failed to create "+vendorPath, "error", err)
 		}
 	}
 
@@ -158,11 +159,11 @@ func createDepVendor(c *model.CommandConfig) (err error) {
 	utils.Logger.Info("Checking for temp folder for source code", "path", tempPath)
 	if !utils.DirExists(tempPath) {
 		if err := os.MkdirAll(tempPath, os.ModePerm); err != nil {
-			return utils.NewBuildIfError(err, "Failed to create " + vendorPath)
+			return utils.NewBuildIfError(err, "Failed to create "+vendorPath)
 		}
 
 		if err = utils.GenerateTemplate(filepath.Join(tempPath, "main.go"), NEW_MAIN_FILE, nil); err != nil {
-			return utils.NewBuildIfError(err, "Failed to create main file " + vendorPath)
+			return utils.NewBuildIfError(err, "Failed to create main file "+vendorPath)
 		}
 	}
 
@@ -204,7 +205,7 @@ func generateSecret() string {
 // Sets the applicaiton path
 func setApplicationPath(c *model.CommandConfig) (err error) {
 
-	// revel/revel#1014 validate relative path, we cannot use built-in functions
+	// terhitormanen/revel#1014 validate relative path, we cannot use built-in functions
 	// since Go import path is valid relative path too.
 	// so check basic part of the path, which is "."
 
@@ -219,7 +220,7 @@ func setApplicationPath(c *model.CommandConfig) (err error) {
 			//// Go get the revel project
 			err = c.PackageResolver(model.RevelImportPath)
 			if err != nil {
-				return utils.NewBuildIfError(err, "Failed to fetch revel " + model.RevelImportPath)
+				return utils.NewBuildIfError(err, "Failed to fetch revel "+model.RevelImportPath)
 			}
 		}
 	}
@@ -242,10 +243,10 @@ func setSkeletonPath(c *model.CommandConfig) (err error) {
 
 		switch strings.ToLower(sp.Scheme) {
 		// TODO Add support for ftp, sftp, scp ??
-		case "" :
+		case "":
 			sp.Scheme = "file"
 			fallthrough
-		case "file" :
+		case "file":
 			fullpath := sp.String()[7:]
 			if !filepath.IsAbs(fullpath) {
 				fullpath, err = filepath.Abs(fullpath)
@@ -284,7 +285,7 @@ func newLoadFromGit(c *model.CommandConfig, sp *url.URL) (err error) {
 	targetPath := filepath.Join(os.TempDir(), "revel", "skeleton")
 	os.RemoveAll(targetPath)
 	pathpart := strings.Split(sp.Path, ":")
-	getCmd := exec.Command("git", "clone", sp.Scheme + "://" + sp.Host + pathpart[0], targetPath)
+	getCmd := exec.Command("git", "clone", sp.Scheme+"://"+sp.Host+pathpart[0], targetPath)
 	utils.Logger.Info("Exec:", "args", getCmd.Args)
 	getOutput, err := getCmd.CombinedOutput()
 	if err != nil {
@@ -350,34 +351,34 @@ const (
 # [[override]]
 #  name = "github.com/x/y"
 #  version = "2.4.0"
-required = ["github.com/revel/revel", "github.com/revel/modules"]
+required = ["github.com/terhitormanen/revel", "github.com/terhitormanen/modules"]
 
 # Note to use a specific version changes this to
 #
 # [[override]]
 #   version = "0.20.1"
-#   name = "github.com/revel/modules"
+#   name = "github.com/terhitormanen/modules"
 
 [[override]]
   branch = "master"
-  name = "github.com/revel/modules"
+  name = "github.com/terhitormanen/modules"
 
 # Note to use a specific version changes this to
 #
 # [[override]]
 #   version = "0.20.0"
-#   name = "github.com/revel/revel"
+#   name = "github.com/terhitormanen/revel"
 [[override]]
   branch = "master"
-  name = "github.com/revel/revel"
+  name = "github.com/terhitormanen/revel"
 
 [[override]]
   branch = "master"
-  name = "github.com/revel/log15"
+  name = "github.com/terhitormanen/log15"
 
 [[override]]
   branch = "master"
-  name = "github.com/revel/cron"
+  name = "github.com/terhitormanen/cron"
 
 [[override]]
   branch = "master"

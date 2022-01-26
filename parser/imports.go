@@ -1,12 +1,13 @@
 package parser
 
 import (
-	"github.com/revel/cmd/utils"
 	"go/ast"
 	"go/build"
 	"go/token"
 	"path/filepath"
 	"strings"
+
+	"github.com/terhitormanen/cmd/utils"
 )
 
 // Add imports to the map from the source dir

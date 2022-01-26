@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
 	"go/ast"
 	"go/token"
+
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 // Scan app source code for calls to X.Y(), where X is of type *Validation.

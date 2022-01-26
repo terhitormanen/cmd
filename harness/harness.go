@@ -16,7 +16,6 @@ package harness
 import (
 	"crypto/tls"
 	"fmt"
-	"time"
 	"go/build"
 	"io"
 	"net"
@@ -28,14 +27,16 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"time"
 
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
-	"github.com/revel/cmd/watcher"
+	"encoding/json"
 	"html/template"
 	"io/ioutil"
 	"sync"
-	"encoding/json"
+
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
+	"github.com/terhitormanen/cmd/watcher"
 )
 
 var (
@@ -205,17 +206,17 @@ func NewHarness(c *model.CommandConfig, paths *model.RevelContainer, runMode str
 // Refresh method rebuilds the Revel application and run it on the given port.
 // called by the watcher
 func (h *Harness) Refresh() (err *utils.SourceError) {
-	t  := time.Now();
+	t := time.Now()
 	fmt.Println("Changed detected, recompiling")
 	err = h.refresh()
-	if err!=nil && !h.ranOnce && h.useProxy {
+	if err != nil && !h.ranOnce && h.useProxy {
 		addr := fmt.Sprintf("%s:%d", h.paths.HTTPAddr, h.paths.HTTPPort)
 
-		fmt.Printf("\nError compiling code, to view error details see proxy running on http://%s\n\n",addr)
+		fmt.Printf("\nError compiling code, to view error details see proxy running on http://%s\n\n", addr)
 	}
 
 	h.ranOnce = true
-	fmt.Printf("\nTime to recompile %s\n",time.Now().Sub(t).String())
+	fmt.Printf("\nTime to recompile %s\n", time.Now().Sub(t).String())
 	return
 }
 
@@ -253,7 +254,7 @@ func (h *Harness) refresh() (err *utils.SourceError) {
 		if !h.config.HistoricMode {
 			// Recalulate run mode based on the config
 			var paths []byte
-			if len(h.app.PackagePathMap)>0 {
+			if len(h.app.PackagePathMap) > 0 {
 				paths, _ = json.Marshal(h.app.PackagePathMap)
 			}
 			runMode = fmt.Sprintf(`{"mode":"%s", "specialUseFlag":%v,"packagePathMap":%s}`, h.app.Paths.RunMode, h.config.Verbose, string(paths))
@@ -261,7 +262,7 @@ func (h *Harness) refresh() (err *utils.SourceError) {
 		}
 		if err2 := h.app.Cmd(runMode).Start(h.config); err2 != nil {
 			utils.Logger.Error("Could not start application", "error", err2)
-			if err,k :=err2.(*utils.SourceError);k {
+			if err, k := err2.(*utils.SourceError); k {
 				return err
 			}
 			return &utils.SourceError{
@@ -310,7 +311,6 @@ func (h *Harness) Run() {
 			}
 			addr := fmt.Sprintf("%s:%d", h.paths.HTTPAddr, h.paths.HTTPPort)
 			utils.Logger.Infof("Proxy server is listening on %s", addr)
-
 
 			var err error
 			if h.paths.HTTPSsl {

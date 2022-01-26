@@ -2,9 +2,10 @@ package logger
 
 import (
 	"fmt"
-	"github.com/revel/log15"
 	"log"
 	"os"
+
+	"github.com/terhitormanen/log15"
 )
 
 // This type implements the MultiLogger
@@ -99,7 +100,7 @@ func (c callHandler) Log(log *log15.Record) error {
 	ctx := log.Ctx
 	var ctxMap ContextMap
 	if len(ctx) > 0 {
-		ctxMap = make(ContextMap, len(ctx) / 2)
+		ctxMap = make(ContextMap, len(ctx)/2)
 
 		for i := 0; i < len(ctx); i += 2 {
 			v := ctx[i]
@@ -108,8 +109,8 @@ func (c callHandler) Log(log *log15.Record) error {
 				key = fmt.Sprintf("LOGGER_INVALID_KEY %v", v)
 			}
 			var value interface{}
-			if len(ctx) > i + 1 {
-				value = ctx[i + 1]
+			if len(ctx) > i+1 {
+				value = ctx[i+1]
 			} else {
 				value = "LOGGER_VALUE_MISSING"
 			}

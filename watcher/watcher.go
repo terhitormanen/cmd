@@ -10,10 +10,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
-	"github.com/fsnotify/fsnotify"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 // Listener is an interface for receivers of filesystem events.
@@ -33,7 +34,7 @@ type DiscerningListener interface {
 // Watcher allows listeners to register to be notified of changes under a given
 // directory.
 type Watcher struct {
-	                                  // Parallel arrays of watcher/listener pairs.
+	// Parallel arrays of watcher/listener pairs.
 	watchers            []*fsnotify.Watcher
 	listeners           []Listener
 	forceRefresh        bool
@@ -42,8 +43,8 @@ type Watcher struct {
 	lastError           int
 	notifyMutex         sync.Mutex
 	paths               *model.RevelContainer
-	refreshTimer        *time.Timer   // The timer to countdown the next refresh
-	timerMutex          *sync.Mutex   // A mutex to prevent concurrent updates
+	refreshTimer        *time.Timer // The timer to countdown the next refresh
+	timerMutex          *sync.Mutex // A mutex to prevent concurrent updates
 	refreshChannel      chan *utils.SourceError
 	refreshChannelCount int
 	refreshTimerMS      time.Duration // The number of milliseconds between refreshing builds
@@ -85,7 +86,7 @@ func (w *Watcher) Listen(listener Listener, roots ...string) {
 	for _, p := range roots {
 		// is the directory / file a symlink?
 		f, err := os.Lstat(p)
-		if err == nil && f.Mode() & os.ModeSymlink == os.ModeSymlink {
+		if err == nil && f.Mode()&os.ModeSymlink == os.ModeSymlink {
 			var realPath string
 			realPath, err = filepath.EvalSymlinks(p)
 			if err != nil {
@@ -200,7 +201,7 @@ func (w *Watcher) Notify() *utils.SourceError {
 			case <-watcher.Errors:
 				continue
 			default:
-			// No events left to pull
+				// No events left to pull
 			}
 			break
 		}
@@ -286,10 +287,9 @@ func (w *Watcher) rebuildRequired(ev fsnotify.Event, listener Listener) bool {
 	}
 
 	if dl, ok := listener.(DiscerningListener); ok {
-		if !dl.WatchFile(ev.Name) || ev.Op & fsnotify.Chmod == fsnotify.Chmod {
+		if !dl.WatchFile(ev.Name) || ev.Op&fsnotify.Chmod == fsnotify.Chmod {
 			return false
 		}
 	}
 	return true
 }
-

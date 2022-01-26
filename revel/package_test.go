@@ -1,17 +1,18 @@
 package main_test
 
 import (
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/revel"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/terhitormanen/cmd/model"
+	main "github.com/terhitormanen/cmd/revel"
 )
 
 // test the commands
 func TestPackage(t *testing.T) {
 	a := assert.New(t)
-	gopath := setup("revel-test-package",  a)
+	gopath := setup("revel-test-package", a)
 
 	t.Run("Package", func(t *testing.T) {
 		a := assert.New(t)

@@ -2,9 +2,10 @@ package parser
 
 import (
 	"go/ast"
-	"github.com/revel/cmd/utils"
-	"github.com/revel/cmd/model"
 	"go/token"
+
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 // If this Decl is a struct type definition, it is summarized and added to specs.

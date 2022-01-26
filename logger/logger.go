@@ -2,8 +2,9 @@ package logger
 
 import (
 	"fmt"
-	"github.com/revel/config"
 	"time"
+
+	"github.com/terhitormanen/config"
 )
 
 // The LogHandler defines the interface to handle the log records
@@ -162,7 +163,7 @@ func (p *parentLogHandler) SetChild(child LogHandler) LogHandler {
 // Create a new log options
 func NewLogOptions(cfg *config.Context, replaceHandler bool, phandler ParentLogHandler, lvl ...LogLevel) (logOptions *LogOptions) {
 	logOptions = &LogOptions{
-		Ctx: cfg,
+		Ctx:                    cfg,
 		ReplaceExistingHandler: replaceHandler,
 		HandlerWrap:            phandler,
 		Levels:                 lvl,

@@ -1,9 +1,10 @@
 package model_test
 
 import (
-	"github.com/revel/revel"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/terhitormanen/revel"
 )
 
 // Test that the event handler can be attached and it dispatches the event received
@@ -21,4 +22,3 @@ func TestEventHandler(t *testing.T) {
 	revel.StopServer(1)
 	assert.Equal(t, counter, 2, "Expected event handler to have been called")
 }
-

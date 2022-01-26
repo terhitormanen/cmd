@@ -2,13 +2,14 @@
 package model
 
 import (
-	"github.com/revel/cmd/utils"
-	"github.com/revel/config"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/terhitormanen/cmd/utils"
+	"github.com/terhitormanen/config"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -39,36 +40,36 @@ type (
 			Root string
 		}
 
-		ImportPath    string            // The import path
-		SourcePath    string            // The full source path
-		RunMode       string            // The current run mode
-		RevelPath     string            // The path to the Revel source code
-		BasePath      string            // The base path to the application
-		AppPath       string            // The application path (BasePath + "/app")
-		ViewsPath     string            // The application views path
-		CodePaths     []string          // All the code paths
-		TemplatePaths []string          // All the template paths
-		ConfPaths     []string          // All the configuration paths
-		Config        *config.Context   // The global config object
-		Packaged      bool              // True if packaged
-		DevMode       bool              // True if running in dev mode
-		HTTPPort      int               // The http port
-		HTTPAddr      string            // The http address
-		HTTPSsl       bool              // True if running https
-		HTTPSslCert   string            // The SSL certificate
-		HTTPSslKey    string            // The SSL key
-		AppName       string            // The application name
-		AppRoot       string            // The application root from the config `app.root`
-		CookiePrefix  string            // The cookie prefix
-		CookieDomain  string            // The cookie domain
-		CookieSecure  bool              // True if cookie is secure
-		SecretStr     string            // The secret string
-		MimeConfig    *config.Context   // The mime configuration
+		ImportPath    string                 // The import path
+		SourcePath    string                 // The full source path
+		RunMode       string                 // The current run mode
+		RevelPath     string                 // The path to the Revel source code
+		BasePath      string                 // The base path to the application
+		AppPath       string                 // The application path (BasePath + "/app")
+		ViewsPath     string                 // The application views path
+		CodePaths     []string               // All the code paths
+		TemplatePaths []string               // All the template paths
+		ConfPaths     []string               // All the configuration paths
+		Config        *config.Context        // The global config object
+		Packaged      bool                   // True if packaged
+		DevMode       bool                   // True if running in dev mode
+		HTTPPort      int                    // The http port
+		HTTPAddr      string                 // The http address
+		HTTPSsl       bool                   // True if running https
+		HTTPSslCert   string                 // The SSL certificate
+		HTTPSslKey    string                 // The SSL key
+		AppName       string                 // The application name
+		AppRoot       string                 // The application root from the config `app.root`
+		CookiePrefix  string                 // The cookie prefix
+		CookieDomain  string                 // The cookie domain
+		CookieSecure  bool                   // True if cookie is secure
+		SecretStr     string                 // The secret string
+		MimeConfig    *config.Context        // The mime configuration
 		ModulePathMap map[string]*ModuleInfo // The module path map
 	}
 	ModuleInfo struct {
 		ImportPath string
-		Path string
+		Path       string
 	}
 
 	WrappedRevelCallback struct {
@@ -94,8 +95,8 @@ func (w *WrappedRevelCallback) PackageResolver(pkgName string) error {
 }
 
 // RevelImportPath Revel framework import path
-var RevelImportPath = "github.com/revel/revel"
-var RevelModulesImportPath = "github.com/revel/modules"
+var RevelImportPath = "github.com/terhitormanen/revel"
+var RevelModulesImportPath = "github.com/terhitormanen/modules"
 
 // This function returns a container object describing the revel application
 // eventually this type of function will replace the global variables.
@@ -107,7 +108,7 @@ func NewRevelPaths(mode, importPath, appSrcPath string, callback RevelCallback) 
 	rp.RunMode = mode
 
 	// We always need to determine the paths for files
-	pathMap, err := utils.FindSrcPaths(appSrcPath, []string{importPath+"/app", RevelImportPath}, callback.PackageResolver)
+	pathMap, err := utils.FindSrcPaths(appSrcPath, []string{importPath + "/app", RevelImportPath}, callback.PackageResolver)
 	if err != nil {
 		return
 	}
@@ -118,7 +119,7 @@ func NewRevelPaths(mode, importPath, appSrcPath string, callback RevelCallback) 
 	rp.AppPath = filepath.Join(rp.BasePath, "app")
 
 	// Sanity check , ensure app and conf paths exist
-	if !utils.DirExists(rp.AppPath)  {
+	if !utils.DirExists(rp.AppPath) {
 		return rp, fmt.Errorf("No application found at path %s", rp.AppPath)
 	}
 	if !utils.DirExists(filepath.Join(rp.BasePath, "conf")) {
@@ -223,7 +224,7 @@ func (rp *RevelContainer) loadModules(callback RevelCallback) (err error) {
 
 		modulePath, err := rp.ResolveImportPath(moduleImportPath)
 		if err != nil {
-			utils.Logger.Info("Missing module ", "module_import_path", moduleImportPath, "error",err)
+			utils.Logger.Info("Missing module ", "module_import_path", moduleImportPath, "error", err)
 			callback.PackageResolver(moduleImportPath)
 			modulePath, err = rp.ResolveImportPath(moduleImportPath)
 			if err != nil {
@@ -244,7 +245,7 @@ func (rp *RevelContainer) loadModules(callback RevelCallback) (err error) {
 
 // Adds a module paths to the container object
 func (rp *RevelContainer) addModulePaths(name, importPath, modulePath string) {
-	utils.Logger.Info("Adding module path","name", name,"import path", importPath,"system path", modulePath)
+	utils.Logger.Info("Adding module path", "name", name, "import path", importPath, "system path", modulePath)
 	if codePath := filepath.Join(modulePath, "app"); utils.DirExists(codePath) {
 		rp.CodePaths = append(rp.CodePaths, codePath)
 		rp.ModulePathMap[name] = &ModuleInfo{importPath, modulePath}
@@ -255,7 +256,7 @@ func (rp *RevelContainer) addModulePaths(name, importPath, modulePath string) {
 
 	// Hack: There is presently no way for the testrunner module to add the
 	// "test" subdirectory to the CodePaths.  So this does it instead.
-	if importPath == rp.Config.StringDefault("module.testrunner", "github.com/revel/modules/testrunner") {
+	if importPath == rp.Config.StringDefault("module.testrunner", "github.com/terhitormanen/modules/testrunner") {
 		joinedPath := filepath.Join(rp.BasePath, "tests")
 		rp.CodePaths = append(rp.CodePaths, joinedPath)
 	}
@@ -272,18 +273,18 @@ func (rp *RevelContainer) ResolveImportPath(importPath string) (string, error) {
 	}
 	config := &packages.Config{
 		Mode: packages.LoadSyntax,
-		Dir:rp.AppPath,
+		Dir:  rp.AppPath,
 	}
 
-	pkgs, err := packages.Load(config,  importPath)
-	if len(pkgs)==0 {
-		return "", errors.New("No packages found for import " + importPath +" using app path "+ rp.AppPath)
+	pkgs, err := packages.Load(config, importPath)
+	if len(pkgs) == 0 {
+		return "", errors.New("No packages found for import " + importPath + " using app path " + rp.AppPath)
 	}
-//	modPkg, err := build.Import(importPath, rp.AppPath, build.FindOnly)
+	//	modPkg, err := build.Import(importPath, rp.AppPath, build.FindOnly)
 	if err != nil {
 		return "", err
 	}
-	if len(pkgs[0].GoFiles)>0 {
+	if len(pkgs[0].GoFiles) > 0 {
 		return filepath.Dir(pkgs[0].GoFiles[0]), nil
 	}
 	return pkgs[0].PkgPath, errors.New("No files found in import path " + importPath)

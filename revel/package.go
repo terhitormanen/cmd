@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 var cmdPackage = &Command{
@@ -28,7 +28,7 @@ Run mode defaults to "dev".
 
 For example:
 
-    revel package github.com/revel/examples/chat
+    revel package github.com/terhitormanen/examples/chat
 `,
 }
 
@@ -40,7 +40,7 @@ func init() {
 // Called when unable to parse the command line automatically and assumes an old launch
 func updatePackageConfig(c *model.CommandConfig, args []string) bool {
 	c.Index = model.PACKAGE
-	if len(args)==0 && c.Package.ImportPath!="" {
+	if len(args) == 0 && c.Package.ImportPath != "" {
 		return true
 	}
 	c.Package.ImportPath = args[0]

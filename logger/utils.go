@@ -1,9 +1,10 @@
 package logger
 
 import (
-	"github.com/revel/log15"
-	"gopkg.in/stack.v0"
 	"log"
+
+	"github.com/terhitormanen/log15"
+	"gopkg.in/stack.v0"
 )
 
 // Utility package to make existing logging backwards compatible

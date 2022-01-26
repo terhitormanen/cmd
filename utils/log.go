@@ -2,10 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"github.com/revel/cmd/logger"
-	"github.com/revel/config"
 	"os"
 	"strings"
+
+	"github.com/terhitormanen/cmd/logger"
+	"github.com/terhitormanen/config"
 )
 
 var Logger = logger.New()

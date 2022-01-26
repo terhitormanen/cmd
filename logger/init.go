@@ -3,11 +3,12 @@ package logger
 // Get all handlers based on the Config (if available)
 import (
 	"fmt"
-	"github.com/revel/config"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/terhitormanen/config"
 )
 
 func InitializeFromConfig(basePath string, config *config.Context) (c *CompositeMultiHandler) {

@@ -16,19 +16,20 @@ import (
 
 	"github.com/jessevdk/go-flags"
 
-	"github.com/agtorre/gocolorize"
-	"github.com/revel/cmd/logger"
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
 	"bytes"
+
+	"github.com/agtorre/gocolorize"
+	"github.com/terhitormanen/cmd/logger"
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 const (
 	// RevelCmdImportPath Revel framework cmd tool import path
-	RevelCmdImportPath = "github.com/revel/cmd"
+	RevelCmdImportPath = "github.com/terhitormanen/cmd"
 
 	// RevelCmdImportPath Revel framework cmd tool import path
-	RevelSkeletonsImportPath = "github.com/revel/skeletons"
+	RevelSkeletonsImportPath = "github.com/terhitormanen/skeletons"
 
 	// DefaultRunMode for revel's application
 	DefaultRunMode = "dev"
@@ -71,14 +72,14 @@ func main() {
 	wd, _ := os.Getwd()
 
 	utils.InitLogger(wd, logger.LvlError)
-	parser := flags.NewParser(c, flags.HelpFlag | flags.PassDoubleDash)
+	parser := flags.NewParser(c, flags.HelpFlag|flags.PassDoubleDash)
 	if len(os.Args) < 2 {
 		parser.WriteHelp(os.Stdout)
 		os.Exit(1)
 	}
 
 	if err := ParseArgs(c, parser, os.Args[1:]); err != nil {
-		fmt.Fprint(os.Stderr, err.Error() + "\n")
+		fmt.Fprint(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
 

@@ -11,9 +11,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/revel/cmd"
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
+	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -23,7 +21,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"bytes"
+
+	"github.com/terhitormanen/cmd"
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 type (
@@ -92,7 +93,7 @@ func (v *VersionCommand) RunWith(c *model.CommandConfig) (err error) {
 // Checks the Revel repos for the latest version
 func (v *VersionCommand) doRepoCheck(updateLibs bool) (versionInfo string, needsUpdate bool) {
 	var (
-		title string
+		title        string
 		localVersion *model.Version
 	)
 	for _, repo := range []string{"revel", "cmd", "modules"} {
@@ -102,11 +103,11 @@ func (v *VersionCommand) doRepoCheck(updateLibs bool) (versionInfo string, needs
 		}
 		switch repo {
 		case "revel":
-			title, repo, localVersion = "Revel Framework", "github.com/revel/revel", v.revelVersion
+			title, repo, localVersion = "Revel Framework", "github.com/terhitormanen/revel", v.revelVersion
 		case "cmd":
-			title, repo, localVersion = "Revel Cmd", "github.com/revel/cmd/revel", v.cmdVersion
+			title, repo, localVersion = "Revel Cmd", "github.com/terhitormanen/cmd/revel", v.cmdVersion
 		case "modules":
-			title, repo, localVersion = "Revel Modules", "github.com/revel/modules", v.modulesVersion
+			title, repo, localVersion = "Revel Modules", "github.com/terhitormanen/modules", v.modulesVersion
 		}
 
 		// Only do an update on the first loop, and if specified to update
@@ -121,9 +122,9 @@ func (v *VersionCommand) doUpdate(title, repo string, local, remote *model.Versi
 	fmt.Println("Attempting to update package", title)
 	if err := v.Command.PackageResolver(repo); err != nil {
 		utils.Logger.Error("Unable to update repo", "repo", repo, "error", err)
-	} else if repo == "github.com/revel/cmd/revel" {
+	} else if repo == "github.com/terhitormanen/cmd/revel" {
 		// One extra step required here to run the install for the command
-		utils.Logger.Fatal("Revel command tool was updated, you must manually run the following command before continuing\ngo install github.com/revel/cmd/revel")
+		utils.Logger.Fatal("Revel command tool was updated, you must manually run the following command before continuing\ngo install github.com/terhitormanen/cmd/revel")
 	}
 	return
 }
@@ -151,7 +152,7 @@ func (v *VersionCommand) versionFromRepo(repoName, branchName, fileName string) 
 	}
 	// Try to download the version of file from the repo, just use an http connection to retrieve the source
 	// Assuming that the repo is github
-	fullurl := "https://raw.githubusercontent.com/revel/" + repoName + "/" + branchName + "/" + fileName
+	fullurl := "https://raw.githubusercontent.com/terhitormanen/" + repoName + "/" + branchName + "/" + fileName
 	resp, err := http.Get(fullurl)
 	if err != nil {
 		return
@@ -224,7 +225,7 @@ func (v *VersionCommand) updateLocalVersions() {
 	v.cmdVersion.BuildDate = cmd.BuildDate
 	v.cmdVersion.MinGoVersion = cmd.MinimumGoVersion
 
-	if v.Command.Version.ImportPath=="" {
+	if v.Command.Version.ImportPath == "" {
 		return
 	}
 

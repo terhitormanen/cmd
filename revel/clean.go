@@ -6,8 +6,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/revel/cmd/model"
-	"github.com/revel/cmd/utils"
+
+	"github.com/terhitormanen/cmd/model"
+	"github.com/terhitormanen/cmd/utils"
 
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ Clean the Revel web application named by the given import path.
 
 For example:
 
-    revel clean github.com/revel/examples/chat
+    revel clean github.com/terhitormanen/examples/chat
 
 It removes the app/tmp and app/routes directory.
 

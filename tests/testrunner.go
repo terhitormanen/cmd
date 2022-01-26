@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/revel/cmd/utils"
+	"github.com/terhitormanen/cmd/utils"
 )
 
 // TestSuiteDesc is used for storing information about a single test suite.

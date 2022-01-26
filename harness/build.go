@@ -462,9 +462,9 @@ package run
 
 import (
 	"reflect"
-	"github.com/revel/revel"{{range $k, $v := $.ImportPaths}}
+	"github.com/terhitormanen/revel"{{range $k, $v := $.ImportPaths}}
 	{{$v}} "{{$k}}"{{end}}
-	"github.com/revel/revel/testing"
+	"github.com/terhitormanen/revel/testing"
 )
 
 var (
@@ -517,7 +517,7 @@ package main
 import (
 	"flag"
 	"{{.ImportPath}}/app/tmp/run"
-	"github.com/revel/revel"
+	"github.com/terhitormanen/revel"
 )
 
 var (
@@ -541,7 +541,7 @@ const RevelRoutesTemplate = `// GENERATED CODE - DO NOT EDIT
 // found in all the controllers.
 package routes
 
-import "github.com/revel/revel"
+import "github.com/terhitormanen/revel"
 
 {{range $i, $c := .Controllers}}
 type t{{.StructName}} struct {}
