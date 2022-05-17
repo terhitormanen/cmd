@@ -9,7 +9,7 @@ import (
 	main "github.com/terhitormanen/cmd/revel"
 )
 
-// test the commands
+// test the commands.
 func TestPackage(t *testing.T) {
 	a := assert.New(t)
 	gopath := setup("revel-test-package", a)
@@ -17,7 +17,7 @@ func TestPackage(t *testing.T) {
 	t.Run("Package", func(t *testing.T) {
 		a := assert.New(t)
 		c := newApp("package-test", model.NEW, nil, a)
-		main.Commands[model.NEW].RunWith(c)
+		a.Nil(main.Commands[model.NEW].RunWith(c), "failed to run new")
 		c.Index = model.PACKAGE
 		c.Package.ImportPath = c.ImportPath
 		a.Nil(main.Commands[model.PACKAGE].RunWith(c), "Failed to run package-test")

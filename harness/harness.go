@@ -15,9 +15,13 @@ package harness
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"go/build"
+	"html/template"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -26,13 +30,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
-
-	"encoding/json"
-	"html/template"
-	"io/ioutil"
-	"sync"
 
 	"github.com/terhitormanen/cmd/model"
 	"github.com/terhitormanen/cmd/utils"
@@ -43,6 +43,8 @@ var (
 	doNotWatch = []string{"tmp", "views", "routes"}
 
 	lastRequestHadError int32
+	startupError        int32
+	startupErrorText    error
 )
 
 // Harness reverse proxies requests to the application server.
@@ -58,7 +60,6 @@ type Harness struct {
 	paths      *model.RevelContainer  // The Revel container
 	config     *model.CommandConfig   // The configuration
 	runMode    string                 // The runmode the harness is running in
-	isError    bool                   // True if harness is in error state
 	ranOnce    bool                   // True app compiled once
 }
 
@@ -71,6 +72,7 @@ func (h *Harness) renderError(iw http.ResponseWriter, ir *http.Request, err erro
 	if err == nil {
 		utils.Logger.Panic("Caller passed in a nil error")
 	}
+
 	templateSet := template.New("__root__")
 	seekViewOnPath := func(view string) (path string) {
 		path = filepath.Join(h.paths.ViewsPath, "errors", view)
@@ -88,26 +90,27 @@ func (h *Harness) renderError(iw http.ResponseWriter, ir *http.Request, err erro
 		}
 		return
 	}
+
 	target := []string{seekViewOnPath("500.html"), seekViewOnPath("500-dev.html")}
 	if !utils.Exists(target[0]) {
 		fmt.Fprintf(iw, "Target template not found not found %s<br />\n", target[0])
-		fmt.Fprintf(iw, "An error ocurred %s", err.Error())
+		fmt.Fprintf(iw, "An error occurred %s", err.Error())
 		return
 	}
+
 	var revelError *utils.SourceError
-	switch e := err.(type) {
-	case *utils.SourceError:
-		revelError = e
-	case error:
+
+	if !errors.As(err, &revelError) {
 		revelError = &utils.SourceError{
 			Title:       "Server Error",
-			Description: e.Error(),
+			Description: err.Error(),
 		}
 	}
 
 	if revelError == nil {
 		panic("no error provided")
 	}
+
 	viewArgs := map[string]interface{}{}
 	viewArgs["RunMode"] = h.paths.RunMode
 	viewArgs["DevMode"] = h.paths.DevMode
@@ -157,11 +160,11 @@ func (h *Harness) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func NewHarness(c *model.CommandConfig, paths *model.RevelContainer, runMode string, noProxy bool) *Harness {
 	// Get a template loader to render errors.
 	// Prefer the app's views/errors directory, and fall back to the stock error pages.
-	//revel.MainTemplateLoader = revel.NewTemplateLoader(
+	// revel.MainTemplateLoader = revel.NewTemplateLoader(
 	//	[]string{filepath.Join(revel.RevelPath, "templates")})
-	//if err := revel.MainTemplateLoader.Refresh(); err != nil {
+	// if err := revel.MainTemplateLoader.Refresh(); err != nil {
 	//	revel.RevelLog.Error("Template loader error", "error", err)
-	//}
+	// }
 
 	addr := paths.HTTPAddr
 	port := paths.Config.IntDefault("harness.port", 0)
@@ -204,10 +207,10 @@ func NewHarness(c *model.CommandConfig, paths *model.RevelContainer, runMode str
 }
 
 // Refresh method rebuilds the Revel application and run it on the given port.
-// called by the watcher
+// called by the watcher.
 func (h *Harness) Refresh() (err *utils.SourceError) {
 	t := time.Now()
-	fmt.Println("Changed detected, recompiling")
+	fmt.Println("Change detected, recompiling")
 	err = h.refresh()
 	if err != nil && !h.ranOnce && h.useProxy {
 		addr := fmt.Sprintf("%s:%d", h.paths.HTTPAddr, h.paths.HTTPPort)
@@ -216,7 +219,7 @@ func (h *Harness) Refresh() (err *utils.SourceError) {
 	}
 
 	h.ranOnce = true
-	fmt.Printf("\nTime to recompile %s\n", time.Now().Sub(t).String())
+	fmt.Printf("\nTime to recompile %s\n", time.Since(t).String())
 	return
 }
 
@@ -238,33 +241,42 @@ func (h *Harness) refresh() (err *utils.SourceError) {
 	h.app, newErr = Build(h.config, h.paths)
 	if newErr != nil {
 		utils.Logger.Error("Build detected an error", "error", newErr)
-		if castErr, ok := newErr.(*utils.SourceError); ok {
+
+		var castErr *utils.SourceError
+		if errors.As(newErr, &castErr) {
 			return castErr
 		}
+
 		err = &utils.SourceError{
 			Title:       "App failed to start up",
-			Description: err.Error(),
+			Description: newErr.Error(),
 		}
+
 		return
 	}
 
 	if h.useProxy {
 		h.app.Port = h.port
 		runMode := h.runMode
+
 		if !h.config.HistoricMode {
 			// Recalulate run mode based on the config
 			var paths []byte
 			if len(h.app.PackagePathMap) > 0 {
 				paths, _ = json.Marshal(h.app.PackagePathMap)
 			}
-			runMode = fmt.Sprintf(`{"mode":"%s", "specialUseFlag":%v,"packagePathMap":%s}`, h.app.Paths.RunMode, h.config.Verbose, string(paths))
 
+			runMode = fmt.Sprintf(`{"mode":"%s", "specialUseFlag":%v,"packagePathMap":%s}`, h.app.Paths.RunMode, h.config.GetVerbose(), string(paths))
 		}
+
 		if err2 := h.app.Cmd(runMode).Start(h.config); err2 != nil {
 			utils.Logger.Error("Could not start application", "error", err2)
-			if err, k := err2.(*utils.SourceError); k {
+
+			var serr *utils.SourceError
+			if errors.As(err2, &serr) {
 				return err
 			}
+
 			return &utils.SourceError{
 				Title:       "App failed to start up",
 				Description: err2.Error(),
@@ -278,13 +290,13 @@ func (h *Harness) refresh() (err *utils.SourceError) {
 }
 
 // WatchDir method returns false to file matches with doNotWatch
-// otheriwse true
+// otheriwse true.
 func (h *Harness) WatchDir(info os.FileInfo) bool {
 	return !utils.ContainsString(doNotWatch, info.Name())
 }
 
 // WatchFile method returns true given filename HasSuffix of ".go"
-// otheriwse false - implements revel.DiscerningListener
+// otheriwse false - implements revel.DiscerningListener.
 func (h *Harness) WatchFile(filename string) bool {
 	return strings.HasSuffix(filename, ".go")
 }
@@ -300,8 +312,12 @@ func (h *Harness) Run() {
 	paths = append(paths, h.paths.CodePaths...)
 	h.watcher = watcher.NewWatcher(h.paths, false)
 	h.watcher.Listen(h, paths...)
-	go h.Refresh()
-	// h.watcher.Notify()
+
+	go func() {
+		if err := h.Refresh(); err != nil {
+			utils.Logger.Error("Failed to refresh", "error", err)
+		}
+	}()
 
 	if h.useProxy {
 		go func() {
@@ -311,7 +327,6 @@ func (h *Harness) Run() {
 			}
 			addr := fmt.Sprintf("%s:%d", h.paths.HTTPAddr, h.paths.HTTPPort)
 			utils.Logger.Infof("Proxy server is listening on %s", addr)
-
 			var err error
 			if h.paths.HTTPSsl {
 				err = http.ListenAndServeTLS(
@@ -326,11 +341,11 @@ func (h *Harness) Run() {
 				utils.Logger.Error("Failed to start reverse proxy:", "error", err)
 			}
 		}()
-
 	}
 
 	// Make a new channel to listen for the interrupt event
 	ch := make(chan os.Signal)
+	//nolint:staticcheck // os.Kill ineffective on Unix, useful on Windows?
 	signal.Notify(ch, os.Interrupt, os.Kill)
 	<-ch
 	// Kill the app and exit
@@ -340,7 +355,7 @@ func (h *Harness) Run() {
 	os.Exit(1)
 }
 
-// Find an unused port
+// Find an unused port.
 func getFreePort() (port int) {
 	conn, err := net.Listen("tcp", ":0")
 	if err != nil {

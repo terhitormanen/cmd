@@ -11,7 +11,7 @@ import (
 	"github.com/terhitormanen/cmd/utils"
 )
 
-// test the commands
+// test the commands.
 func TestClean(t *testing.T) {
 	a := assert.New(t)
 	gopath := setup("revel-test-clean", a)
@@ -19,9 +19,12 @@ func TestClean(t *testing.T) {
 	t.Run("Clean", func(t *testing.T) {
 		a := assert.New(t)
 		c := newApp("clean-test", model.NEW, nil, a)
-		main.Commands[model.NEW].RunWith(c)
+
+		a.Nil(main.Commands[model.NEW].RunWith(c), "failed to run new")
+
 		c.Index = model.TEST
-		main.Commands[model.TEST].RunWith(c)
+		a.Nil(main.Commands[model.TEST].RunWith(c), "failed to run test")
+
 		a.True(utils.Exists(filepath.Join(gopath, "clean-test", "app", "tmp", "main.go")),
 			"Missing main from path "+filepath.Join(gopath, "clean-test", "app", "tmp", "main.go"))
 		c.Clean.ImportPath = c.ImportPath

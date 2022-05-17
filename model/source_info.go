@@ -36,7 +36,7 @@ type SourceInfo struct {
 
 // TypesThatEmbed returns all types that (directly or indirectly) embed the
 // target type, which must be a fully qualified type name,
-// e.g. "github.com/revel/revel.Controller"
+// e.g. "github.com/revel/revel.Controller".
 func (s *SourceInfo) TypesThatEmbed(targetType, packageFilter string) (filtered []*TypeInfo) {
 	// Do a search in the "embedded type graph", starting with the target type.
 	var (
@@ -77,6 +77,7 @@ func (s *SourceInfo) TypesThatEmbed(targetType, packageFilter string) (filtered 
 					"type", filteredItem.StructName,
 					"package", filteredItem.ImportPath)
 				filtered = append(filtered[:i], filtered[i+1:]...)
+				//nolint:ineffassign // huh?
 				exit = false
 				break
 			}
@@ -109,7 +110,7 @@ func (s *SourceInfo) TypesThatEmbed(targetType, packageFilter string) (filtered 
 }
 
 // ControllerSpecs returns the all the controllers that embeds
-// `revel.Controller`
+// `revel.Controller`.
 func (s *SourceInfo) ControllerSpecs() []*TypeInfo {
 	utils.Logger.Info("Scanning controller specifications for types ", "typePath", RevelImportPath+".Controller", "speclen", len(s.controllerSpecs))
 	if s.controllerSpecs == nil {
@@ -119,7 +120,7 @@ func (s *SourceInfo) ControllerSpecs() []*TypeInfo {
 }
 
 // TestSuites returns the all the Application tests that embeds
-// `testing.TestSuite`
+// `testing.TestSuite`.
 func (s *SourceInfo) TestSuites() []*TypeInfo {
 	if s.testSuites == nil {
 		s.testSuites = s.TypesThatEmbed(RevelImportPath+"/testing.TestSuite", "testsuite")

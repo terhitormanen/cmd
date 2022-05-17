@@ -40,9 +40,8 @@ func ReadLines(filename string) ([]string, error) {
 	return strings.Split(string(dataBytes), "\n"), nil
 }
 
-// Copy file returns error
+// Copy file returns error.
 func CopyFile(destFilename, srcFilename string) (err error) {
-
 	destFile, err := os.Create(destFilename)
 	if err != nil {
 		return NewBuildIfError(err, "Failed to create file", "file", destFilename)
@@ -106,7 +105,7 @@ func GenerateTemplate(filename, templateSource string, args map[string]interface
 	return
 }
 
-// Given the target path and source path and data. A template
+// Given the target path and source path and data. A template.
 func RenderTemplate(destPath, srcPath string, data interface{}) (err error) {
 	tmpl, err := template.ParseFiles(srcPath)
 	if err != nil {
@@ -130,7 +129,7 @@ func RenderTemplate(destPath, srcPath string, data interface{}) (err error) {
 	return
 }
 
-// Given the target path and source path and data. A template
+// Given the target path and source path and data. A template.
 func RenderTemplateToStream(output io.Writer, srcPath []string, data interface{}) (err error) {
 	tmpl, err := template.ParseFiles(srcPath...)
 	if err != nil {
@@ -149,10 +148,11 @@ func MustChmod(filename string, mode os.FileMode) {
 	PanicOnError(err, fmt.Sprintf("Failed to chmod %d %q", mode, filename))
 }
 
-// Called if panic
+// Called if panic.
 func PanicOnError(err error, msg string) {
-	if revErr, ok := err.(*SourceError); (ok && revErr != nil) || (!ok && err != nil) {
-		Logger.Panicf("Abort: %s: %s %s", msg, revErr, err)
+	var serr *SourceError
+	if (errors.As(err, &serr) && serr != nil) || err != nil {
+		Logger.Panicf("Abort: %s: %s %s", msg, serr, err)
 	}
 }
 
@@ -189,7 +189,6 @@ func CopyDir(destDir, srcDir string, data map[string]interface{}) error {
 
 		// If this file ends in ".template", render it as a template.
 		if strings.HasSuffix(relSrcPath, ".template") {
-
 			return RenderTemplate(destPath[:len(destPath)-len(".template")], srcPath, data)
 		}
 
@@ -199,13 +198,13 @@ func CopyDir(destDir, srcDir string, data map[string]interface{}) error {
 	})
 }
 
-// Shortcut to fsWalk
+// Shortcut to fsWalk.
 func Walk(root string, walkFn filepath.WalkFunc) error {
 	return fsWalk(root, root, walkFn)
 }
 
 // Walk the path tree using the function
-// Every file found will call the function
+// Every file found will call the function.
 func fsWalk(fname string, linkName string, walkFn filepath.WalkFunc) error {
 	fsWalkFunc := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -245,7 +244,7 @@ func fsWalk(fname string, linkName string, walkFn filepath.WalkFunc) error {
 	return err
 }
 
-// Tar gz the folder
+// Tar gz the folder.
 func TarGzDir(destFilename, srcDir string) (name string, err error) {
 	zipFile, err := os.Create(destFilename)
 	if err != nil {
@@ -267,6 +266,10 @@ func TarGzDir(destFilename, srcDir string) (name string, err error) {
 	}()
 
 	err = fsWalk(srcDir, srcDir, func(srcPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			Logger.Debugf("error in walkFn: %s", err)
+		}
+
 		if info.IsDir() {
 			return nil
 		}
@@ -301,7 +304,7 @@ func TarGzDir(destFilename, srcDir string) (name string, err error) {
 	return zipFile.Name(), err
 }
 
-// Return true if the file exists
+// Return true if the file exists.
 func Exists(filename string) bool {
 	_, err := os.Stat(filename)
 	return err == nil
@@ -325,7 +328,7 @@ func Empty(dirname string) bool {
 	return len(results) == 0
 }
 
-// Find the full source dir for the import path, uses the build.Default.GOPATH to search for the directory
+// Find the full source dir for the import path, uses the build.Default.GOPATH to search for the directory.
 func FindSrcPaths(appPath string, packageList []string, packageResolver func(pkgName string) error) (sourcePathsmap map[string]string, err error) {
 	sourcePathsmap, missingList, err := findSrcPaths(appPath, packageList)
 	if err != nil && packageResolver != nil || len(missingList) > 0 {
@@ -346,17 +349,28 @@ func FindSrcPaths(appPath string, packageList []string, packageResolver func(pkg
 	return
 }
 
-var NO_APP_FOUND = errors.New("No app found")
-var NO_REVEL_FOUND = errors.New("No revel found")
+// Error is used for constant errors.
+type Error string
 
-// Find the full source dir for the import path, uses the build.Default.GOPATH to search for the directory
+// Error implements the error interface.
+func (e Error) Error() string {
+	return string(e)
+}
+
+var (
+	ErrNoApp   Error = "no app found"
+	ErrNoRevel Error = "no revel found"
+)
+
+// Find the full source dir for the import path, uses the build.Default.GOPATH to search for the directory.
 func findSrcPaths(appPath string, packagesList []string) (sourcePathsmap map[string]string, missingList []string, err error) {
 	// Use packages to fetch
 	// by not specifying env, we will use the default env
 	config := &packages.Config{
-		Mode: packages.NeedName | packages.NeedFiles,
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedDeps,
 		Dir:  appPath,
 	}
+	config.Env = ReducedEnv(false)
 	sourcePathsmap = map[string]string{}
 	Logger.Infof("Environment path %s root %s config env %s", os.Getenv("GOPATH"), os.Getenv("GOROOT"), config.Env)
 
@@ -372,9 +386,8 @@ func findSrcPaths(appPath string, packagesList []string) (sourcePathsmap map[str
 				if pck.Errors != nil && len(pck.Errors) > 0 {
 					log.Error("Error ", "count", len(pck.Errors), "App Import Path", pck.ID, "filesystem path", pck.PkgPath, "errors", pck.Errors)
 					// continue
-
 				}
-				//a,_ := pck.MarshalJSON()
+				// a,_ := pck.MarshalJSON()
 				log.Info("Found ", "count", len(pck.GoFiles), "App Import Path", pck.ID, "apppath", appPath)
 				if len(pck.GoFiles) > 0 {
 					sourcePathsmap[packageName] = filepath.Dir(pck.GoFiles[0])
@@ -384,9 +397,9 @@ func findSrcPaths(appPath string, packagesList []string) (sourcePathsmap map[str
 		}
 		if !found {
 			if packageName == "github.com/terhitormanen/revel" {
-				err = NO_REVEL_FOUND
+				err = ErrNoRevel
 			} else {
-				err = NO_APP_FOUND
+				err = ErrNoApp
 			}
 			missingList = append(missingList, packageName)
 		}

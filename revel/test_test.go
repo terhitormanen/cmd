@@ -9,7 +9,7 @@ import (
 	main "github.com/terhitormanen/cmd/revel"
 )
 
-// test the commands
+// test the commands.
 func TestRevelTest(t *testing.T) {
 	a := assert.New(t)
 	gopath := setup("revel-test-test", a)

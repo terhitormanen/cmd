@@ -14,7 +14,7 @@ var versionTests = [][]string{
 	{"2.0", "2.0.0"},
 }
 
-// Test that the event handler can be attached and it dispatches the event received
+// Test that the event handler can be attached and it dispatches the event received.
 func TestVersion(t *testing.T) {
 	for _, v := range versionTests {
 		p, e := model.ParseVersion(v[0])
@@ -23,7 +23,7 @@ func TestVersion(t *testing.T) {
 	}
 }
 
-// test the ranges
+// test the ranges.
 func TestVersionRange(t *testing.T) {
 	a, _ := model.ParseVersion("0.1.2")
 	b, _ := model.ParseVersion("0.2.1")

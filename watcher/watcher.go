@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -47,16 +46,16 @@ type Watcher struct {
 	timerMutex          *sync.Mutex // A mutex to prevent concurrent updates
 	refreshChannel      chan *utils.SourceError
 	refreshChannelCount int
-	refreshTimerMS      time.Duration // The number of milliseconds between refreshing builds
+	refreshInterval     time.Duration // The interval between refreshing builds
 }
 
-// Creates a new watched based on the container
+// Creates a new watched based on the container.
 func NewWatcher(paths *model.RevelContainer, eagerRefresh bool) *Watcher {
 	return &Watcher{
-		forceRefresh:   false,
-		lastError:      -1,
-		paths:          paths,
-		refreshTimerMS: time.Duration(paths.Config.IntDefault("watch.rebuild.delay", 1000)),
+		forceRefresh:    true,
+		lastError:       -1,
+		paths:           paths,
+		refreshInterval: time.Duration(paths.Config.IntDefault("watch.rebuild.delay", 1000)) * time.Millisecond,
 		eagerRefresh: eagerRefresh ||
 			paths.DevMode &&
 				paths.Config.BoolDefault("watch", true) &&
@@ -110,9 +109,7 @@ func (w *Watcher) Listen(listener Listener, roots ...string) {
 			continue
 		}
 
-		var watcherWalker func(path string, info os.FileInfo, err error) error
-
-		watcherWalker = func(path string, info os.FileInfo, err error) error {
+		watcherWalker := func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				utils.Logger.Fatal("Watcher: Error walking path:", "error", err)
 				return nil
@@ -151,7 +148,6 @@ func (w *Watcher) Listen(listener Listener, roots ...string) {
 
 // NotifyWhenUpdated notifies the watcher when a file event is received.
 func (w *Watcher) NotifyWhenUpdated(listener Listener, watcher *fsnotify.Watcher) {
-
 	for {
 		select {
 		case ev := <-watcher.Events:
@@ -167,7 +163,10 @@ func (w *Watcher) NotifyWhenUpdated(listener Listener, watcher *fsnotify.Watcher
 				} else {
 					// Run refresh in parallel
 					go func() {
-						w.notifyInProcess(listener)
+						if err := w.notifyInProcess(listener); err != nil {
+							utils.Logger.Error("failed to notify",
+								"error", err)
+						}
 					}()
 				}
 			}
@@ -219,10 +218,10 @@ func (w *Watcher) Notify() *utils.SourceError {
 				w.lastError = i
 				w.forceRefresh = true
 				return err
-			} else {
-				w.lastError = -1
-				w.forceRefresh = false
 			}
+
+			w.lastError = -1
+			w.forceRefresh = false
 		}
 	}
 
@@ -230,7 +229,7 @@ func (w *Watcher) Notify() *utils.SourceError {
 }
 
 // Build a queue for refresh notifications
-// this will not return until one of the queue completes
+// this will not return until one of the queue completes.
 func (w *Watcher) notifyInProcess(listener Listener) (err *utils.SourceError) {
 	shouldReturn := false
 	// This code block ensures that either a timer is created
@@ -242,11 +241,11 @@ func (w *Watcher) notifyInProcess(listener Listener) (err *utils.SourceError) {
 		w.forceRefresh = true
 		if w.refreshTimer != nil {
 			utils.Logger.Info("Found existing timer running, resetting")
-			w.refreshTimer.Reset(time.Millisecond * w.refreshTimerMS)
+			w.refreshTimer.Reset(w.refreshInterval)
 			shouldReturn = true
 			w.refreshChannelCount++
 		} else {
-			w.refreshTimer = time.NewTimer(time.Millisecond * w.refreshTimerMS)
+			w.refreshTimer = time.NewTimer(w.refreshInterval)
 		}
 	}()
 

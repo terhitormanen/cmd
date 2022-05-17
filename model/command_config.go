@@ -17,7 +17,7 @@ import (
 	"github.com/terhitormanen/cmd/utils"
 )
 
-// The constants
+// The constants.
 const (
 	NEW COMMAND = iota + 1
 	RUN
@@ -28,11 +28,16 @@ const (
 	VERSION
 )
 
+const (
+	ErrImportInvalid  Error = "invalid import path, working dir is in GOPATH root"
+	ErrUnableToImport Error = "unable to determine import path from"
+)
+
 type (
-	// The Revel command type
+	// The Revel command type.
 	COMMAND int
 
-	// The Command config for the line input
+	// The Command config for the line input.
 	CommandConfig struct {
 		Index            COMMAND  // The index
 		Verbose          []bool   `short:"v" long:"debug" description:"If set the logger is set to verbose"` // True if debug is active
@@ -42,7 +47,7 @@ type (
 		ImportPath       string   // The import path (relative to a GOPATH)
 		GoPath           string   // The GoPath
 		GoCmd            string   // The full path to the go executable
-		//SrcRoot           string                                                                                                                      // The source root
+		// SrcRoot           string                                                                                                                      // The source root
 		AppPath           string                     // The application path (absolute)
 		AppName           string                     // The application name
 		HistoricBuildMode bool                       `long:"historic-build-mode" description:"If set the code is scanned using the original parsers, not the go.1.11+"` // True if debug is active
@@ -60,7 +65,7 @@ type (
 	}
 )
 
-// Updates the import path depending on the command
+// Updates the import path depending on the command.
 func (c *CommandConfig) UpdateImportPath() error {
 	var importPath string
 	required := true
@@ -110,7 +115,7 @@ func (c *CommandConfig) UpdateImportPath() error {
 						importPath = importPath[4:]
 					} else if importPath == "src" {
 						if c.Index != VERSION {
-							return fmt.Errorf("Invlaid import path, working dir is in GOPATH root")
+							return ErrImportInvalid
 						}
 						importPath = ""
 					}
@@ -122,7 +127,10 @@ func (c *CommandConfig) UpdateImportPath() error {
 
 	c.ImportPath = importPath
 	// We need the source root determined at this point to check the setversions
-	c.initAppFolder()
+	if err := c.initAppFolder(); err != nil {
+		utils.Logger.Error("Error initing app folder", "error", err)
+	}
+
 	utils.Logger.Info("Returned import path", "path", importPath)
 	if required && c.Index != NEW {
 		if err := c.SetVersions(); err != nil {
@@ -138,7 +146,7 @@ func (c *CommandConfig) UpdateImportPath() error {
 		return nil
 	}
 	if len(importPath) == 0 {
-		return fmt.Errorf("Unable to determine import path from : %s", importPath)
+		return fmt.Errorf("%w: %s", ErrUnableToImport, importPath)
 	}
 	return nil
 }
@@ -154,7 +162,7 @@ func (c *CommandConfig) initAppFolder() (err error) {
 
 	// First try to determine where the application is located - this should be the import value
 	appFolder := c.ImportPath
-	wd, err := os.Getwd()
+	wd, _ := os.Getwd()
 	if len(appFolder) == 0 {
 		// We will assume the working directory is the appFolder
 		appFolder = wd
@@ -165,8 +173,6 @@ func (c *CommandConfig) initAppFolder() (err error) {
 		} else {
 			appFolder = filepath.Join(wd, appFolder)
 		}
-	} else if strings.Contains(appFolder, ".") {
-		appFolder = filepath.Join(wd, filepath.Base(c.ImportPath))
 	} else if !filepath.IsAbs(appFolder) {
 		appFolder = filepath.Join(wd, appFolder)
 	}
@@ -187,7 +193,7 @@ func (c *CommandConfig) initAppFolder() (err error) {
 			if strings.Index(line, "module ") == 0 {
 				c.ImportPath = strings.TrimSpace(strings.Split(line, "module")[1])
 				c.AppPath = appFolder
-				//c.SrcRoot = appFolder
+				// c.SrcRoot = appFolder
 				utils.Logger.Info("Set application path and package based on go mod", "path", c.AppPath)
 				return nil
 			}
@@ -217,7 +223,6 @@ func (c *CommandConfig) initAppFolder() (err error) {
 			c.AppPath = filepath.Join(bestpath, "src", c.ImportPath)
 		}
 		// Recalculate the appFolder because we are using a GOPATH
-
 	} else {
 		// This is new and not vendored, so the app path is the appFolder
 		c.AppPath = appFolder
@@ -227,7 +232,7 @@ func (c *CommandConfig) initAppFolder() (err error) {
 	return nil
 }
 
-// Used to initialize the package resolver
+// Used to initialize the package resolver.
 func (c *CommandConfig) InitPackageResolver() {
 	c.initGoPaths()
 	utils.Logger.Info("InitPackageResolver", "useVendor", c.Vendored, "path", c.AppPath)
@@ -238,7 +243,7 @@ func (c *CommandConfig) InitPackageResolver() {
 		var getCmd *exec.Cmd
 		print("Downloading related packages ...")
 		if c.Vendored {
-			getCmd = exec.Command(c.GoCmd, "mod", "tidy")
+			getCmd = exec.Command(c.GoCmd, "mod", "tidy", "-v")
 		} else {
 			utils.Logger.Info("No vendor folder detected, not using dependency manager to import package", "package", pkgName)
 			getCmd = exec.Command(c.GoCmd, "get", "-u", pkgName)
@@ -256,7 +261,7 @@ func (c *CommandConfig) InitPackageResolver() {
 	}
 }
 
-// lookup and set Go related variables
+// lookup and set Go related variables.
 func (c *CommandConfig) initGoPaths() {
 	utils.Logger.Info("InitGoPaths", "vendored", c.Vendored)
 	// check for go executable
@@ -276,9 +281,7 @@ func (c *CommandConfig) initGoPaths() {
 		utils.Logger.Fatal("Abort: GOPATH environment variable is not set. " +
 			"Please refer to http://golang.org/doc/code.html to configure your Go environment.")
 	}
-	return
-	//todo determine if the rest needs to happen
-
+	// todo determine if the rest needs to happen
 	// terhitormanen/revel#1004 choose go path relative to current working directory
 
 	// What we want to do is to add the import to the end of the
@@ -304,10 +307,17 @@ func (c *CommandConfig) initGoPaths() {
 		utils.Logger.Info("Set application path", "path", c.AppPath)
 
 	*/
-
 }
 
-// Sets the versions on the command config
+// Sets the versions on the command config.
+func (c *CommandConfig) GetVerbose() (verbose bool) {
+	if len(c.Verbose) > 0 {
+		verbose = c.Verbose[0]
+	}
+	return
+}
+
+// Sets the versions on the command config.
 func (c *CommandConfig) SetVersions() (err error) {
 	c.CommandVersion, _ = ParseVersion(cmd.Version)
 	pathMap, err := utils.FindSrcPaths(c.AppPath, []string{RevelImportPath}, c.PackageResolver)
@@ -339,7 +349,7 @@ func (c *CommandConfig) SetVersions() (err error) {
 				spec := a.(*ast.ValueSpec)
 				r := spec.Values[0].(*ast.BasicLit)
 				if spec.Names[0].Name == "Version" {
-					c.FrameworkVersion, err = ParseVersion(strings.Replace(r.Value, `"`, ``, -1))
+					c.FrameworkVersion, err = ParseVersion(strings.ReplaceAll(r.Value, `"`, ``))
 					if err != nil {
 						utils.Logger.Errorf("Failed to parse version")
 					} else {

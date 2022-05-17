@@ -10,7 +10,7 @@ import (
 	main "github.com/terhitormanen/cmd/revel"
 )
 
-// test the commands
+// test the commands.
 func TestVersion(t *testing.T) {
 	a := assert.New(t)
 	gopath := setup("revel-test-version", a)
@@ -34,8 +34,9 @@ func TestVersion(t *testing.T) {
 		c.Version.ImportPath = c.ImportPath
 		a.Nil(main.Commands[model.VERSION].RunWith(c), "Failed to run version-test")
 	})
+
 	if !t.Failed() {
-		if err := os.RemoveAll(gopath); err != nil && err != os.ErrNotExist {
+		if err := os.RemoveAll(gopath); err != nil && !errors.Is(err, os.ErrNotExist) {
 			a.Fail("Failed to remove test path", err.Error())
 		}
 	}

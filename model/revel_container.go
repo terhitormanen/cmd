@@ -2,7 +2,6 @@
 package model
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -13,8 +12,26 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+// Error is used for constant errors.
+type Error string
+
+// Error implements the error interface.
+func (e Error) Error() string {
+	return string(e)
+}
+
+const (
+	ErrNoApp       Error = "no app found at path"
+	ErrNoConfig    Error = "no config found at path"
+	ErrNotFound    Error = "not found"
+	ErrMissingCert Error = "no http.sslcert provided"
+	ErrMissingKey  Error = "no http.sslkey provided"
+	ErrNoFiles     Error = "no files found in import path"
+	ErrNoPackages  Error = "no packages found for import"
+)
+
 type (
-	// The container object for describing all Revels variables
+	// The container object for describing all Revels variables.
 	RevelContainer struct {
 		BuildPaths struct {
 			Revel string
@@ -78,25 +95,28 @@ type (
 	}
 )
 
-// Simple Wrapped RevelCallback
+// Simple Wrapped RevelCallback.
 func NewWrappedRevelCallback(fe func(key Event, value interface{}) (response EventResponse), ie func(pkgName string) error) RevelCallback {
 	return &WrappedRevelCallback{fe, ie}
 }
 
-// Function to implement the FireEvent
+// Function to implement the FireEvent.
 func (w *WrappedRevelCallback) FireEvent(key Event, value interface{}) (response EventResponse) {
 	if w.FireEventFunction != nil {
 		response = w.FireEventFunction(key, value)
 	}
 	return
 }
+
 func (w *WrappedRevelCallback) PackageResolver(pkgName string) error {
 	return w.ImportFunction(pkgName)
 }
 
-// RevelImportPath Revel framework import path
-var RevelImportPath = "github.com/terhitormanen/revel"
-var RevelModulesImportPath = "github.com/terhitormanen/modules"
+// RevelImportPath Revel framework import path.
+var (
+	RevelImportPath        = "github.com/terhitormanen/revel"
+	RevelModulesImportPath = "github.com/terhitormanen/modules"
+)
 
 // This function returns a container object describing the revel application
 // eventually this type of function will replace the global variables.
@@ -120,10 +140,10 @@ func NewRevelPaths(mode, importPath, appSrcPath string, callback RevelCallback) 
 
 	// Sanity check , ensure app and conf paths exist
 	if !utils.DirExists(rp.AppPath) {
-		return rp, fmt.Errorf("No application found at path %s", rp.AppPath)
+		return rp, fmt.Errorf("%w: %s", ErrNoApp, rp.AppPath)
 	}
 	if !utils.DirExists(filepath.Join(rp.BasePath, "conf")) {
-		return rp, fmt.Errorf("No configuration found at path %s", filepath.Join(rp.BasePath, "conf"))
+		return rp, fmt.Errorf("%w: %s", ErrNoConfig, filepath.Join(rp.BasePath, "conf"))
 	}
 
 	rp.ViewsPath = filepath.Join(rp.AppPath, "views")
@@ -147,7 +167,7 @@ func NewRevelPaths(mode, importPath, appSrcPath string, callback RevelCallback) 
 
 	rp.Config, err = config.LoadContext("app.conf", rp.ConfPaths)
 	if err != nil {
-		return rp, fmt.Errorf("Unable to load configuartion file %s", err)
+		return rp, fmt.Errorf("unable to load configuration file %w", err)
 	}
 
 	// Ensure that the selected runmode appears in app.conf.
@@ -156,7 +176,7 @@ func NewRevelPaths(mode, importPath, appSrcPath string, callback RevelCallback) 
 		mode = config.DefaultSection
 	}
 	if !rp.Config.HasSection(mode) {
-		return rp, fmt.Errorf("app.conf: No mode found: %s %s", "run-mode", mode)
+		return rp, fmt.Errorf("app.conf: %w %s %s", ErrNotFound, "run-mode", mode)
 	}
 	rp.Config.SetSection(mode)
 
@@ -169,13 +189,14 @@ func NewRevelPaths(mode, importPath, appSrcPath string, callback RevelCallback) 
 	rp.HTTPSslKey = rp.Config.StringDefault("http.sslkey", "")
 	if rp.HTTPSsl {
 		if rp.HTTPSslCert == "" {
-			return rp, errors.New("No http.sslcert provided.")
+			return rp, ErrMissingCert
 		}
+
 		if rp.HTTPSslKey == "" {
-			return rp, errors.New("No http.sslkey provided.")
+			return rp, ErrMissingKey
 		}
 	}
-	//
+
 	rp.AppName = rp.Config.StringDefault("app.name", "(not set)")
 	rp.AppRoot = rp.Config.StringDefault("app.root", "")
 	rp.CookiePrefix = rp.Config.StringDefault("cookie.prefix", "REVEL")
@@ -198,7 +219,7 @@ func NewRevelPaths(mode, importPath, appSrcPath string, callback RevelCallback) 
 func (rp *RevelContainer) LoadMimeConfig() (err error) {
 	rp.MimeConfig, err = config.LoadContext("mime-types.conf", rp.ConfPaths)
 	if err != nil {
-		return fmt.Errorf("Failed to load mime type config: %s %s", "error", err)
+		return fmt.Errorf("failed to load mime type config: %s %w", "error", err)
 	}
 	return
 }
@@ -207,12 +228,10 @@ func (rp *RevelContainer) LoadMimeConfig() (err error) {
 // This will fire the REVEL_BEFORE_MODULE_LOADED, REVEL_AFTER_MODULE_LOADED
 // for each module loaded. The callback will receive the RevelContainer, name, moduleImportPath and modulePath
 // It will automatically add in the code paths for the module to the
-// container object
+// container object.
 func (rp *RevelContainer) loadModules(callback RevelCallback) (err error) {
 	keys := []string{}
-	for _, key := range rp.Config.Options("module.") {
-		keys = append(keys, key)
-	}
+	keys = append(keys, rp.Config.Options("module.")...)
 
 	// Reorder module order by key name, a poor mans sort but at least it is consistent
 	sort.Strings(keys)
@@ -225,10 +244,14 @@ func (rp *RevelContainer) loadModules(callback RevelCallback) (err error) {
 		modulePath, err := rp.ResolveImportPath(moduleImportPath)
 		if err != nil {
 			utils.Logger.Info("Missing module ", "module_import_path", moduleImportPath, "error", err)
-			callback.PackageResolver(moduleImportPath)
+
+			if err := callback.PackageResolver(moduleImportPath); err != nil {
+				return fmt.Errorf("failed to resolve package %w", err)
+			}
+
 			modulePath, err = rp.ResolveImportPath(moduleImportPath)
 			if err != nil {
-				return fmt.Errorf("Failed to load module.  Import of path failed %s:%s %s:%s ", "modulePath", moduleImportPath, "error", err)
+				return fmt.Errorf("failed to load module.  Import of path failed %s:%s %s:%w ", "modulePath", moduleImportPath, "error", err)
 			}
 		}
 		// Drop anything between module.???.<name of module>
@@ -243,7 +266,7 @@ func (rp *RevelContainer) loadModules(callback RevelCallback) (err error) {
 	return
 }
 
-// Adds a module paths to the container object
+// Adds a module paths to the container object.
 func (rp *RevelContainer) addModulePaths(name, importPath, modulePath string) {
 	utils.Logger.Info("Adding module path", "name", name, "import path", importPath, "system path", modulePath)
 	if codePath := filepath.Join(modulePath, "app"); utils.DirExists(codePath) {
@@ -272,13 +295,15 @@ func (rp *RevelContainer) ResolveImportPath(importPath string) (string, error) {
 		return filepath.Join(rp.SourcePath, importPath), nil
 	}
 	config := &packages.Config{
-		Mode: packages.LoadSyntax,
-		Dir:  rp.AppPath,
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports |
+			packages.NeedTypes | packages.NeedTypesSizes | packages.NeedSyntax | packages.NeedTypesInfo,
+		Dir: rp.AppPath,
 	}
 
+	config.Env = utils.ReducedEnv(false)
 	pkgs, err := packages.Load(config, importPath)
 	if len(pkgs) == 0 {
-		return "", errors.New("No packages found for import " + importPath + " using app path " + rp.AppPath)
+		return "", fmt.Errorf("%w %s using app path %s", ErrNoPackages, importPath, rp.AppPath)
 	}
 	//	modPkg, err := build.Import(importPath, rp.AppPath, build.FindOnly)
 	if err != nil {
@@ -287,5 +312,5 @@ func (rp *RevelContainer) ResolveImportPath(importPath string) (string, error) {
 	if len(pkgs[0].GoFiles) > 0 {
 		return filepath.Dir(pkgs[0].GoFiles[0]), nil
 	}
-	return pkgs[0].PkgPath, errors.New("No files found in import path " + importPath)
+	return pkgs[0].PkgPath, fmt.Errorf("%w: %s", ErrNoFiles, importPath)
 }

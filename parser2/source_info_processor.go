@@ -38,13 +38,12 @@ func (s *SourceInfoProcessor) processPackage(p *packages.Package) (sourceInfo *m
 	log.Info("Processing package")
 	for _, tree := range p.Syntax {
 		for _, decl := range tree.Decls {
-
 			s.sourceProcessor.packageMap[p.PkgPath] = filepath.Dir(p.Fset.Position(decl.Pos()).Filename)
 			if !s.addImport(decl, p, localImportMap, log) {
 				continue
 			}
 			spec, found := s.getStructTypeDecl(decl, p.Fset)
-			//log.Info("Checking file","filename", p.Fset.Position(decl.Pos()).Filename,"found",found)
+			// log.Info("Checking file","filename", p.Fset.Position(decl.Pos()).Filename,"found",found)
 			if found {
 				if isController || isTest {
 					controllerSpec := s.getControllerSpec(spec, p, localImportMap)
@@ -167,7 +166,6 @@ func (s *SourceInfoProcessor) getValidation(funcDecl *ast.FuncDecl, p *packages.
 	})
 
 	return lineKeys
-
 }
 
 // Check to see if there is a *revel.Validation as an argument.
@@ -194,6 +192,7 @@ func (s *SourceInfoProcessor) getValidationParameter(funcDecl *ast.FuncDecl) *as
 	}
 	return nil
 }
+
 func (s *SourceInfoProcessor) getControllerFunc(funcDecl *ast.FuncDecl, p *packages.Package, localImportMap map[string]string) (method *model.MethodSpec, recvTypeName string) {
 	selExpr, ok := funcDecl.Type.Results.List[0].Type.(*ast.SelectorExpr)
 	if !ok {
@@ -277,7 +276,7 @@ func (s *SourceInfoProcessor) getControllerFunc(funcDecl *ast.FuncDecl, p *packa
 		return true
 	})
 
-	var recvType = funcDecl.Recv.List[0].Type
+	recvType := funcDecl.Recv.List[0].Type
 	if recvStarType, ok := recvType.(*ast.StarExpr); ok {
 		recvTypeName = recvStarType.X.(*ast.Ident).Name
 	} else {
@@ -285,6 +284,7 @@ func (s *SourceInfoProcessor) getControllerFunc(funcDecl *ast.FuncDecl, p *packa
 	}
 	return
 }
+
 func (s *SourceInfoProcessor) getControllerSpec(spec *ast.TypeSpec, p *packages.Package, localImportMap map[string]string) (controllerSpec *model.TypeInfo) {
 	structType := spec.Type.(*ast.StructType)
 
@@ -361,6 +361,7 @@ func (s *SourceInfoProcessor) getControllerSpec(spec *ast.TypeSpec, p *packages.
 	s.sourceProcessor.log.Info("Added controller spec", "name", controllerSpec.StructName, "package", controllerSpec.ImportPath)
 	return
 }
+
 func (s *SourceInfoProcessor) getStructTypeDecl(decl ast.Decl, fset *token.FileSet) (spec *ast.TypeSpec, found bool) {
 	genDecl, ok := decl.(*ast.GenDecl)
 	if !ok {
@@ -380,8 +381,8 @@ func (s *SourceInfoProcessor) getStructTypeDecl(decl ast.Decl, fset *token.FileS
 	_, found = spec.Type.(*ast.StructType)
 
 	return
-
 }
+
 func (s *SourceInfoProcessor) getFuncName(funcDecl *ast.FuncDecl) string {
 	prefix := ""
 	if funcDecl.Recv != nil {
@@ -395,6 +396,7 @@ func (s *SourceInfoProcessor) getFuncName(funcDecl *ast.FuncDecl) string {
 	}
 	return prefix + funcDecl.Name.Name
 }
+
 func (s *SourceInfoProcessor) addImport(decl ast.Decl, p *packages.Package, localImportMap map[string]string, log logger.MultiLogger) (shouldContinue bool) {
 	shouldContinue = true
 	genDecl, ok := decl.(*ast.GenDecl)
@@ -406,7 +408,7 @@ func (s *SourceInfoProcessor) addImport(decl ast.Decl, p *packages.Package, loca
 		shouldContinue = false
 		for _, spec := range genDecl.Specs {
 			importSpec := spec.(*ast.ImportSpec)
-			//fmt.Printf("*** import specification %#v\n", importSpec)
+			// fmt.Printf("*** import specification %#v\n", importSpec)
 			var pkgAlias string
 			if importSpec.Name != nil {
 				pkgAlias = importSpec.Name.Name
@@ -424,7 +426,6 @@ func (s *SourceInfoProcessor) addImport(decl ast.Decl, p *packages.Package, loca
 			}
 			localImportMap[pkgAlias] = fullPath
 		}
-
 	}
 	return
 }

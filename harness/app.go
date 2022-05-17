@@ -6,19 +6,27 @@ package harness
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
-
-	"runtime"
 
 	"github.com/terhitormanen/cmd/model"
 	"github.com/terhitormanen/cmd/utils"
 )
+
+// Error is used for constant errors.
+type Error string
+
+// Error implements the error interface.
+func (e Error) Error() string {
+	return string(e)
+}
+
+const ErrTimedOut Error = "app timed out"
 
 // App contains the configuration for running a Revel app.  (Not for the app itself)
 // Its only purpose is constructing the command to execute.
@@ -30,7 +38,7 @@ type App struct {
 	Paths          *model.RevelContainer
 }
 
-// NewApp returns app instance with binary path in it
+// NewApp returns app instance with binary path in it.
 func NewApp(binPath string, paths *model.RevelContainer, packagePathMap map[string]string) *App {
 	return &App{BinaryPath: binPath, Paths: paths, Port: paths.HTTPPort, PackagePathMap: packagePathMap}
 }
@@ -52,7 +60,7 @@ type AppCmd struct {
 	*exec.Cmd
 }
 
-// NewAppCmd returns the AppCmd with parameters initialized for running app
+// NewAppCmd returns the AppCmd with parameters initialized for running app.
 func NewAppCmd(binPath string, port int, runMode string, paths *model.RevelContainer) AppCmd {
 	cmd := exec.Command(binPath,
 		fmt.Sprintf("-port=%d", port),
@@ -66,6 +74,7 @@ func NewAppCmd(binPath string, port int, runMode string, paths *model.RevelConta
 func (cmd AppCmd) Start(c *model.CommandConfig) error {
 	listeningWriter := &startupListeningWriter{os.Stdout, make(chan bool), c, &bytes.Buffer{}}
 	cmd.Stdout = listeningWriter
+	cmd.Stderr = listeningWriter
 	utils.CmdInit(cmd.Cmd, !c.Vendored, c.AppPath)
 	utils.Logger.Info("Exec app:", "path", cmd.Path, "args", cmd.Args, "dir", cmd.Dir, "env", cmd.Env)
 	if err := cmd.Cmd.Start(); err != nil {
@@ -76,21 +85,22 @@ func (cmd AppCmd) Start(c *model.CommandConfig) error {
 	case exitState := <-cmd.waitChan():
 		fmt.Println("Startup failure view previous messages, \n Proxy is listening :", c.Run.Port)
 		err := utils.NewError("", "Revel Run Error", "starting your application there was an exception. See terminal output, "+exitState, "")
+		atomic.SwapInt32(&startupError, 1)
 		// TODO pretiffy command line output
-		// err.MetaError = listeningWriter.getLastOutput()
+		err.Stack = listeningWriter.buffer.String()
 		return err
 
 	case <-time.After(60 * time.Second):
 		println("Revel proxy is listening, point your browser to :", c.Run.Port)
 		utils.Logger.Error("Killing revel server process did not respond after wait timeout.", "processid", cmd.Process.Pid)
 		cmd.Kill()
-		return errors.New("revel/harness: app timed out")
+
+		return fmt.Errorf("revel/harness: %w", ErrTimedOut)
 
 	case <-listeningWriter.notifyReady:
 		println("Revel proxy is listening, point your browser to :", c.Run.Port)
 		return nil
 	}
-
 }
 
 // Run the app server inline.  Never returns.
@@ -104,11 +114,10 @@ func (cmd AppCmd) Run(c *model.CommandConfig) {
 
 // Kill terminates the app server if it's running.
 func (cmd AppCmd) Kill() {
-
 	if cmd.Cmd != nil && (cmd.ProcessState == nil || !cmd.ProcessState.Exited()) {
 		// Windows appears to send the kill to all threads, shutting down the
 		// server before this can, this check will ensure the process is still running
-		if _, err := os.FindProcess(int(cmd.Process.Pid)); err != nil {
+		if _, err := os.FindProcess(cmd.Process.Pid); err != nil {
 			// Server has already exited
 			utils.Logger.Info("Server not running revel server pid", "pid", cmd.Process.Pid)
 			return
@@ -136,11 +145,8 @@ func (cmd AppCmd) Kill() {
 
 		// Send an interrupt signal to allow for a graceful shutdown
 		utils.Logger.Info("Killing revel server pid", "pid", cmd.Process.Pid)
-		var err error
-		if runtime.GOOS != "windows" {
-			// os.Interrupt is not available on windows
-			err = cmd.Process.Signal(os.Interrupt)
-		}
+
+		err := cmd.Process.Signal(os.Interrupt)
 
 		if err != nil {
 			utils.Logger.Info(
@@ -193,7 +199,7 @@ type startupListeningWriter struct {
 	buffer      *bytes.Buffer
 }
 
-// Writes to this output stream
+// Writes to this output stream.
 func (w *startupListeningWriter) Write(p []byte) (int, error) {
 	if w.notifyReady != nil && bytes.Contains(p, []byte("Revel engine is listening on")) {
 		w.notifyReady <- true
@@ -209,10 +215,4 @@ func (w *startupListeningWriter) Write(p []byte) (int, error) {
 		w.buffer.Write(p)
 	}
 	return w.dest.Write(p)
-}
-
-// Returns the cleaned output from the response
-// TODO clean the response more
-func (w *startupListeningWriter) getLastOutput() string {
-	return w.buffer.String()
 }
