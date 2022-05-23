@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
